@@ -1,0 +1,14 @@
+{
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "testPathIgnorePatterns": [],
+  "testRegex": ".spec.ts$",
+  "testRunner": "jest-circus/runner",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "testEnvironment": "node"
+}
