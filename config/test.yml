@@ -1,0 +1,2 @@
+# Keep me
+# Otherwise the config lib complains that it can't locate any config files corresponding NODE_ENV=test

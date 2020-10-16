@@ -4,6 +4,7 @@ import * as winston from 'winston';
 import { createLoggerProviders } from './logger.providers';
 import { ConfigModule } from '../config';
 import { LoggingConfig, loggingConfigProvider } from './logging.config';
+import { sanitizeLogRecord } from './utils';
 
 export class LoggerModule {
     static forRoot(): DynamicModule {
@@ -29,6 +30,7 @@ export class LoggerModule {
                             transports: [
                                 new winston.transports.Console({
                                     format: winston.format.combine(
+                                        winston.format(sanitizeLogRecord)(),
                                         ...formats,
                                     ),
                                 }),

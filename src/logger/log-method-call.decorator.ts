@@ -2,7 +2,8 @@ import { LoggerService } from './logger.service';
 import { serializeError } from 'serialize-error';
 
 export const LogMethodCall = (
-    loggerField: 'logger' = 'logger'
+    sensitiveKeys?: string[],
+    loggerField: 'logger' = 'logger',
 ) =>
     // tslint:disable-next-line:only-arrow-functions
     function(target: unknown, key: string, descriptor: PropertyDescriptor): void {
@@ -17,7 +18,7 @@ export const LogMethodCall = (
                 ...(result && { result } || {}),
                 ...(error && { error: serializeError(error) } || {})
             };
-            logger[error && 'error' || 'info'](`Finished ${fullMethodName}()`, meta);
+            logger[error && 'error' || 'info'](`Finished ${fullMethodName}()`, meta, { sensitiveKeys });
             return error || result;
         }
 
@@ -31,7 +32,7 @@ export const LogMethodCall = (
                 'class': className,
                 method: method.name,
                 args,
-            });
+            }, { sensitiveKeys });
 
             try {
                 // eslint-disable-next-line prefer-rest-params
