@@ -1,5 +1,13 @@
 import { LoggerService } from './logger.service';
 import { serializeError } from 'serialize-error';
+import { SENSITIVE_REPLACEMENT } from '../utils/sensitive-data';
+
+const NOLOG_PARAM_INDICES_META_KEY = 'noLogParamIndices';
+export function NoLog(target: object, propertyKey: string | symbol, index: number) {
+    const indexes = Reflect.getOwnMetadata(NOLOG_PARAM_INDICES_META_KEY, target, propertyKey) || [];
+    indexes.push(index);
+    Reflect.defineMetadata(NOLOG_PARAM_INDICES_META_KEY, indexes, target, propertyKey);
+}
 
 export const LogMethodCall = (
     sensitiveKeys?: string[],
@@ -28,10 +36,11 @@ export const LogMethodCall = (
                 throw new Error(`Missing logger in ${className}`);
             }
 
+            const noLogParamIndices = Reflect.getOwnMetadata(NOLOG_PARAM_INDICES_META_KEY, target as any, key);
             logger.info(`Invoked ${fullMethodName}()`, {
                 'class': className,
                 method: method.name,
-                args,
+                args: args.map((val, idx) => noLogParamIndices && noLogParamIndices.includes(idx) ? SENSITIVE_REPLACEMENT : val)
             }, { sensitiveKeys });
 
             try {

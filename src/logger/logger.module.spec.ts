@@ -1,13 +1,12 @@
 // To shut down the config lib complaints
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
 
-import { LogMethodCall } from './log-method-call.decorator';
-import { Test } from '@nestjs/testing';
-import { LoggerModule } from './logger.module';
-import { LoggingConfig } from './logging.config';
-import { InjectLogger } from './inject-logger.decorator';
-import { LoggerService } from './logger.service';
 import { Injectable } from '@nestjs/common';
+import { SENSITIVE_REPLACEMENT } from '../utils/sensitive-data';
+import { InjectLogger } from './inject-logger.decorator';
+import { LogMethodCall, NoLog } from './log-method-call.decorator';
+import { LoggerModule } from './logger.module';
+import { LoggerService } from './logger.service';
 
 const makeMeta = () => ({
     key1: 'key1 value',
@@ -25,8 +24,7 @@ class Tester {
     constructor(
         @InjectLogger(Tester.name)
         private readonly logger: LoggerService,
-    ) {
-    }
+    ) {}
 
     logInfo(meta: any) {
         this.logger.info('Test message', meta, { sensitiveKeys });
@@ -36,25 +34,26 @@ class Tester {
     loggedMethod(meta: any) {
         return meta;
     }
+
+    @LogMethodCall()
+    loggedMethodWithNoLog(keyToLog: string, @NoLog keyNotToLog: string) {
+        return [keyToLog, keyNotToLog];
+    }
 }
 
 // TODO Properly test what's actually being logged by Winston
 describe(LoggerModule.name, () => {
     let tester: Tester;
 
-    beforeAll(async () => {
-        const module = await Test.createTestingModule({
-            imports: [LoggerModule.forRoot()],
-            providers: [Tester],
-            exports: [Tester],
-        })
-            .overrideProvider(LoggingConfig)
-            .useValue({
-                newRelicLoggingFormat: false,
-            })
-            .compile();
+    const mockLog = jest.fn();
+    const mockLogger: LoggerService = ({
+        info: mockLog,
+    } as any) as LoggerService;
 
-        tester = module.get(Tester);
+    beforeEach(async () => {
+        tester = new Tester(mockLogger);
+
+        mockLog.mockReset();
     });
 
     describe('masking', () => {
@@ -69,6 +68,21 @@ describe(LoggerModule.name, () => {
                 const meta = makeMeta();
                 tester.loggedMethod(meta);
                 expect(meta).toMatchObject(makeMeta());
+            });
+        });
+
+        describe(`@NoLog`, () => {
+            it('prevents annotated parameters from being logged by @LogMethodCall', () => {
+                tester.loggedMethodWithNoLog(
+                    'should be logged',
+                    'this should NOT appear in the logger',
+                );
+
+                const loggedArguments = mockLog.mock.calls[0][1].args;
+                expect(loggedArguments).toEqual([
+                    'should be logged',
+                    SENSITIVE_REPLACEMENT,
+                ]);
             });
         });
     });
