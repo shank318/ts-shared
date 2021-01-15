@@ -1,9 +1,7 @@
 // To shut down the config lib complaints
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'true';
 
-import { Injectable } from '@nestjs/common';
 import { SENSITIVE_REPLACEMENT } from '../utils/sensitive-data';
-import { InjectLogger } from './inject-logger.decorator';
 import { LogMethodCall, NoLog } from './log-method-call.decorator';
 import { LoggerModule } from './logger.module';
 import { LoggerService } from './logger.service';
@@ -19,10 +17,8 @@ const makeMeta = () => ({
 
 const sensitiveKeys = ['key1', 'key2', 'key4'];
 
-@Injectable()
 class Tester {
     constructor(
-        @InjectLogger(Tester.name)
         private readonly logger: LoggerService,
     ) {}
 
@@ -30,7 +26,7 @@ class Tester {
         this.logger.info('Test message', meta, { sensitiveKeys });
     }
 
-    @LogMethodCall(sensitiveKeys)
+    @LogMethodCall({ sensitiveKeys })
     loggedMethod(meta: any) {
         return meta;
     }
@@ -78,11 +74,65 @@ describe(LoggerModule.name, () => {
                     'this should NOT appear in the logger',
                 );
 
-                const loggedArguments = mockLog.mock.calls[0][1].args;
+                const enteredMethodLogCall = mockLog.mock.calls[0]
+                const loggedArguments = enteredMethodLogCall[1].args;
+
                 expect(loggedArguments).toEqual([
                     'should be logged',
                     SENSITIVE_REPLACEMENT,
                 ]);
+            });
+        });
+        describe(`@LogMethodCall`, () => {
+            it('does not log the return value when logReturnValue=false', () => {
+                class ReturnValueTest {
+                    logger = mockLogger;
+
+                    @LogMethodCall({ logReturnValue: false })
+                    method() {
+                        return 'the return value';
+                    }
+                }
+                new ReturnValueTest().method();
+
+                const finishedMethodLogCall = mockLog.mock.calls[1]
+                const returnValue = finishedMethodLogCall[1].result;
+
+                expect(returnValue).toEqual(SENSITIVE_REPLACEMENT);
+            });
+
+            it('logs the return value by default', () => {
+                class ReturnValueTest {
+                    logger = mockLogger;
+
+                    @LogMethodCall()
+                    method() {
+                        return 'the return value';
+                    }
+                }
+                new ReturnValueTest().method();
+
+                const finishedMethodLogCall = mockLog.mock.calls[1];
+                const returnValue = finishedMethodLogCall[1].result;
+
+                expect(returnValue).toEqual('the return value');
+            });
+            
+            it('can log falsy return values (like 0)', () => {
+                class ReturnValueTest {
+                    logger = mockLogger;
+
+                    @LogMethodCall({ logReturnValue: true })
+                    returnsZero() {
+                        return 0;
+                    }
+                }
+                new ReturnValueTest().returnsZero();
+
+                const finishedMethodLogCall = mockLog.mock.calls[1];
+                const returnValue = finishedMethodLogCall[1].result;
+
+                expect(returnValue).toEqual(0);
             });
         });
     });
