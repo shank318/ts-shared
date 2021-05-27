@@ -8,7 +8,8 @@
   "scripts": {
     "lint": "eslint \"{src,test}/**/*.ts\" --fix --max-warnings=0",
     "build": "rimraf lib && nest build",
-    "test": "cross-env NODE_ENV=test jest"
+    "test": "cross-env NODE_ENV=test jest",
+    "postinstall": "npm run build"
   },
   "keywords": [],
   "author": "",
